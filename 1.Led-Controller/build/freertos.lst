@@ -1,0 +1,678 @@
+ARM GAS  /tmp/ccibS3hW.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.arch armv7e-m
+   3              		.fpu fpv4-sp-d16
+   4              		.eabi_attribute 27, 1
+   5              		.eabi_attribute 28, 1
+   6              		.eabi_attribute 20, 1
+   7              		.eabi_attribute 21, 1
+   8              		.eabi_attribute 23, 3
+   9              		.eabi_attribute 24, 1
+  10              		.eabi_attribute 25, 1
+  11              		.eabi_attribute 26, 1
+  12              		.eabi_attribute 30, 1
+  13              		.eabi_attribute 34, 1
+  14              		.eabi_attribute 18, 4
+  15              		.file	"freertos.c"
+  16              		.section	.rodata.str1.4,"aMS",%progbits,1
+  17              		.align	2
+  18              	.LC0:
+  19 0000 4C65644F 		.ascii	"LedOnTask\000"
+  19      6E546173 
+  19      6B00
+  20 000a 0000     		.align	2
+  21              	.LC2:
+  22 000c 4C65644F 		.ascii	"LedOffTask\000"
+  22      66665461 
+  22      736B00
+  23 0017 00       		.align	2
+  24              	.LC4:
+  25 0018 4C656442 		.ascii	"LedBlinkTask\000"
+  25      6C696E6B 
+  25      5461736B 
+  25      00
+  26              		.text
+  27              	.Ltext0:
+  28              		.cfi_sections	.debug_frame
+  29              		.section	.text.ledOnTask_init,"ax",%progbits
+  30              		.align	1
+  31              		.global	ledOnTask_init
+  32              		.syntax unified
+  33              		.thumb
+  34              		.thumb_func
+  36              	ledOnTask_init:
+  37              	.LFB137:
+  38              		.file 1 "Core/Src/freertos.c"
+   1:Core/Src/freertos.c **** /* USER CODE BEGIN Header */
+   2:Core/Src/freertos.c **** /**
+   3:Core/Src/freertos.c ****  ******************************************************************************
+   4:Core/Src/freertos.c ****  * File Name          : freertos.c
+   5:Core/Src/freertos.c ****  * Description        : Code for freertos applications
+   6:Core/Src/freertos.c ****  ******************************************************************************
+   7:Core/Src/freertos.c ****  * @attention
+   8:Core/Src/freertos.c ****  *
+   9:Core/Src/freertos.c ****  * Copyright (c) 2023 STMicroelectronics.
+  10:Core/Src/freertos.c ****  * All rights reserved.
+  11:Core/Src/freertos.c ****  *
+  12:Core/Src/freertos.c ****  * This software is licensed under terms that can be found in the LICENSE file
+  13:Core/Src/freertos.c ****  * in the root directory of this software component.
+ARM GAS  /tmp/ccibS3hW.s 			page 2
+
+
+  14:Core/Src/freertos.c ****  * If no LICENSE file comes with this software, it is provided AS-IS.
+  15:Core/Src/freertos.c ****  *
+  16:Core/Src/freertos.c ****  ******************************************************************************
+  17:Core/Src/freertos.c ****  */
+  18:Core/Src/freertos.c **** /* USER CODE END Header */
+  19:Core/Src/freertos.c **** 
+  20:Core/Src/freertos.c **** /* Includes ------------------------------------------------------------------*/
+  21:Core/Src/freertos.c **** #include "FreeRTOS.h"
+  22:Core/Src/freertos.c **** #include "task.h"
+  23:Core/Src/freertos.c **** #include "main.h"
+  24:Core/Src/freertos.c **** #include "cmsis_os.h"
+  25:Core/Src/freertos.c **** #include "usart.h"
+  26:Core/Src/freertos.c **** #include "string.h"
+  27:Core/Src/freertos.c **** 
+  28:Core/Src/freertos.c **** /*---------------------------------------------*/
+  29:Core/Src/freertos.c **** osThreadId LedOnTaskHandle;
+  30:Core/Src/freertos.c **** osThreadId LedOffTaskHandle;
+  31:Core/Src/freertos.c **** osThreadId LedBlinkTaskHandle;
+  32:Core/Src/freertos.c **** 
+  33:Core/Src/freertos.c **** char rxMessege[100];
+  34:Core/Src/freertos.c **** char singleByte;
+  35:Core/Src/freertos.c **** 
+  36:Core/Src/freertos.c **** /* Private function prototypes -----------------------------------------------*/
+  37:Core/Src/freertos.c **** void ledOnTask_init(void const *argument);
+  38:Core/Src/freertos.c **** void ledOffTask_init(void const *argument);
+  39:Core/Src/freertos.c **** void ledBlinkTask_init(void const *argument);
+  40:Core/Src/freertos.c **** 
+  41:Core/Src/freertos.c **** void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+  42:Core/Src/freertos.c **** 
+  43:Core/Src/freertos.c **** /* GetIdleTaskMemory prototype (linked to static allocation support) */
+  44:Core/Src/freertos.c **** void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskSt
+  45:Core/Src/freertos.c **** 
+  46:Core/Src/freertos.c **** /* USER CODE BEGIN GET_IDLE_TASK_MEMORY */
+  47:Core/Src/freertos.c **** static StaticTask_t xIdleTaskTCBBuffer;
+  48:Core/Src/freertos.c **** static StackType_t xIdleStack[configMINIMAL_STACK_SIZE];
+  49:Core/Src/freertos.c **** 
+  50:Core/Src/freertos.c **** void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskSt
+  51:Core/Src/freertos.c **** {
+  52:Core/Src/freertos.c **** 	*ppxIdleTaskTCBBuffer = &xIdleTaskTCBBuffer;
+  53:Core/Src/freertos.c **** 	*ppxIdleTaskStackBuffer = &xIdleStack[0];
+  54:Core/Src/freertos.c **** 	*pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+  55:Core/Src/freertos.c **** 	/* place for user code */
+  56:Core/Src/freertos.c **** }
+  57:Core/Src/freertos.c **** /* USER CODE END GET_IDLE_TASK_MEMORY */
+  58:Core/Src/freertos.c **** 
+  59:Core/Src/freertos.c **** /**
+  60:Core/Src/freertos.c ****  * @brief  FreeRTOS initialization
+  61:Core/Src/freertos.c ****  * @param  None
+  62:Core/Src/freertos.c ****  * @retval None
+  63:Core/Src/freertos.c ****  */
+  64:Core/Src/freertos.c **** void MX_FREERTOS_Init(void)
+  65:Core/Src/freertos.c **** {
+  66:Core/Src/freertos.c **** 	/* Create the thread(s) */
+  67:Core/Src/freertos.c **** 	/* definition and creation of LedOnTask */
+  68:Core/Src/freertos.c **** 	osThreadDef(LedOnTask, ledOnTask_init, osPriorityNormal, 0, 128);
+  69:Core/Src/freertos.c **** 	LedOnTaskHandle = osThreadCreate(osThread(LedOnTask), NULL);
+  70:Core/Src/freertos.c **** 
+ARM GAS  /tmp/ccibS3hW.s 			page 3
+
+
+  71:Core/Src/freertos.c **** 	/* definition and creation of LedOffTask */
+  72:Core/Src/freertos.c **** 	osThreadDef(LedOffTask, ledOffTask_init, osPriorityNormal, 0, 128);
+  73:Core/Src/freertos.c **** 	LedOffTaskHandle = osThreadCreate(osThread(LedOffTask), NULL);
+  74:Core/Src/freertos.c **** 
+  75:Core/Src/freertos.c **** 	/* definition and creation of LedBlinkTask */
+  76:Core/Src/freertos.c **** 	osThreadDef(LedBlinkTask, ledBlinkTask_init, osPriorityNormal, 0, 128);
+  77:Core/Src/freertos.c **** 	LedBlinkTaskHandle = osThreadCreate(osThread(LedBlinkTask), NULL);
+  78:Core/Src/freertos.c **** 
+  79:Core/Src/freertos.c **** 	/*configure interrupt to recieve single bytes via uart*/
+  80:Core/Src/freertos.c **** 	HAL_UART_Receive_IT(&huart1, (uint8_t *)&singleByte, 1);
+  81:Core/Src/freertos.c **** 
+  82:Core/Src/freertos.c **** 
+  83:Core/Src/freertos.c **** 	/*Suspend all task*/
+  84:Core/Src/freertos.c **** }
+  85:Core/Src/freertos.c **** 
+  86:Core/Src/freertos.c **** 
+  87:Core/Src/freertos.c **** /* USER CODE BEGIN Header_ledOnTask_init */
+  88:Core/Src/freertos.c **** /**
+  89:Core/Src/freertos.c ****  * @brief  Function implementing the LedOnTask thread.
+  90:Core/Src/freertos.c ****  * @param  argument: Not used
+  91:Core/Src/freertos.c ****  * @retval None
+  92:Core/Src/freertos.c ****  */
+  93:Core/Src/freertos.c **** /* USER CODE END Header_ledOnTask_init */
+  94:Core/Src/freertos.c **** void ledOnTask_init(void const *argument)
+  95:Core/Src/freertos.c **** {
+  39              		.loc 1 95 1 view -0
+  40              		.cfi_startproc
+  41              		@ Volatile: function does not return.
+  42              		@ args = 0, pretend = 0, frame = 0
+  43              		@ frame_needed = 0, uses_anonymous_args = 0
+  44              	.LVL0:
+  45              		.loc 1 95 1 is_stmt 0 view .LVU1
+  46 0000 08B5     		push	{r3, lr}
+  47              	.LCFI0:
+  48              		.cfi_def_cfa_offset 8
+  49              		.cfi_offset 3, -8
+  50              		.cfi_offset 14, -4
+  51              	.LVL1:
+  52              	.L2:
+  96:Core/Src/freertos.c **** 	/* USER CODE BEGIN ledOnTask_init */
+  97:Core/Src/freertos.c **** 	/* Infinite loop */
+  98:Core/Src/freertos.c **** 	for (;;)
+  53              		.loc 1 98 2 is_stmt 1 discriminator 1 view .LVU2
+  99:Core/Src/freertos.c **** 	{
+ 100:Core/Src/freertos.c **** 		osDelay(1);
+  54              		.loc 1 100 3 discriminator 1 view .LVU3
+  55 0002 0120     		movs	r0, #1
+  56 0004 FFF7FEFF 		bl	osDelay
+  57              	.LVL2:
+  98:Core/Src/freertos.c **** 	{
+  58              		.loc 1 98 8 discriminator 1 view .LVU4
+  59 0008 FBE7     		b	.L2
+  60              		.cfi_endproc
+  61              	.LFE137:
+  63              		.section	.text.ledOffTask_init,"ax",%progbits
+  64              		.align	1
+  65              		.global	ledOffTask_init
+ARM GAS  /tmp/ccibS3hW.s 			page 4
+
+
+  66              		.syntax unified
+  67              		.thumb
+  68              		.thumb_func
+  70              	ledOffTask_init:
+  71              	.LFB138:
+ 101:Core/Src/freertos.c **** 	}
+ 102:Core/Src/freertos.c **** 	/* USER CODE END ledOnTask_init */
+ 103:Core/Src/freertos.c **** }
+ 104:Core/Src/freertos.c **** 
+ 105:Core/Src/freertos.c **** 
+ 106:Core/Src/freertos.c **** /**
+ 107:Core/Src/freertos.c ****  * @brief Function implementing the LedOffTask thread.
+ 108:Core/Src/freertos.c ****  * @param argument: Not used
+ 109:Core/Src/freertos.c ****  * @retval None
+ 110:Core/Src/freertos.c ****  */
+ 111:Core/Src/freertos.c **** void ledOffTask_init(void const *argument)
+ 112:Core/Src/freertos.c **** {
+  72              		.loc 1 112 1 view -0
+  73              		.cfi_startproc
+  74              		@ Volatile: function does not return.
+  75              		@ args = 0, pretend = 0, frame = 0
+  76              		@ frame_needed = 0, uses_anonymous_args = 0
+  77              	.LVL3:
+  78              		.loc 1 112 1 is_stmt 0 view .LVU6
+  79 0000 08B5     		push	{r3, lr}
+  80              	.LCFI1:
+  81              		.cfi_def_cfa_offset 8
+  82              		.cfi_offset 3, -8
+  83              		.cfi_offset 14, -4
+  84              	.LVL4:
+  85              	.L5:
+ 113:Core/Src/freertos.c **** 	/* USER CODE BEGIN ledOffTask_init */
+ 114:Core/Src/freertos.c **** 	/* Infinite loop */
+ 115:Core/Src/freertos.c **** 	for (;;)
+  86              		.loc 1 115 2 is_stmt 1 discriminator 1 view .LVU7
+ 116:Core/Src/freertos.c **** 	{
+ 117:Core/Src/freertos.c **** 		osDelay(1);
+  87              		.loc 1 117 3 discriminator 1 view .LVU8
+  88 0002 0120     		movs	r0, #1
+  89 0004 FFF7FEFF 		bl	osDelay
+  90              	.LVL5:
+ 115:Core/Src/freertos.c **** 	{
+  91              		.loc 1 115 8 discriminator 1 view .LVU9
+  92 0008 FBE7     		b	.L5
+  93              		.cfi_endproc
+  94              	.LFE138:
+  96              		.section	.text.ledBlinkTask_init,"ax",%progbits
+  97              		.align	1
+  98              		.global	ledBlinkTask_init
+  99              		.syntax unified
+ 100              		.thumb
+ 101              		.thumb_func
+ 103              	ledBlinkTask_init:
+ 104              	.LFB139:
+ 118:Core/Src/freertos.c **** 	}
+ 119:Core/Src/freertos.c **** 	/* USER CODE END ledOffTask_init */
+ 120:Core/Src/freertos.c **** }
+ARM GAS  /tmp/ccibS3hW.s 			page 5
+
+
+ 121:Core/Src/freertos.c **** 
+ 122:Core/Src/freertos.c **** /**
+ 123:Core/Src/freertos.c ****  * @brief Function implementing the LedBlinkTask thread.
+ 124:Core/Src/freertos.c ****  * @param argument: Not used
+ 125:Core/Src/freertos.c ****  * @retval None
+ 126:Core/Src/freertos.c ****  */
+ 127:Core/Src/freertos.c **** void ledBlinkTask_init(void const *argument)
+ 128:Core/Src/freertos.c **** {
+ 105              		.loc 1 128 1 view -0
+ 106              		.cfi_startproc
+ 107              		@ Volatile: function does not return.
+ 108              		@ args = 0, pretend = 0, frame = 0
+ 109              		@ frame_needed = 0, uses_anonymous_args = 0
+ 110              	.LVL6:
+ 111              		.loc 1 128 1 is_stmt 0 view .LVU11
+ 112 0000 08B5     		push	{r3, lr}
+ 113              	.LCFI2:
+ 114              		.cfi_def_cfa_offset 8
+ 115              		.cfi_offset 3, -8
+ 116              		.cfi_offset 14, -4
+ 117              	.LVL7:
+ 118              	.L8:
+ 129:Core/Src/freertos.c **** 	/* USER CODE BEGIN ledBlinkTask_init */
+ 130:Core/Src/freertos.c **** 	/* Infinite loop */
+ 131:Core/Src/freertos.c **** 	for (;;)
+ 119              		.loc 1 131 2 is_stmt 1 discriminator 1 view .LVU12
+ 132:Core/Src/freertos.c **** 	{
+ 133:Core/Src/freertos.c **** 		osDelay(1);
+ 120              		.loc 1 133 3 discriminator 1 view .LVU13
+ 121 0002 0120     		movs	r0, #1
+ 122 0004 FFF7FEFF 		bl	osDelay
+ 123              	.LVL8:
+ 131:Core/Src/freertos.c **** 	{
+ 124              		.loc 1 131 8 discriminator 1 view .LVU14
+ 125 0008 FBE7     		b	.L8
+ 126              		.cfi_endproc
+ 127              	.LFE139:
+ 129              		.section	.text.vApplicationGetIdleTaskMemory,"ax",%progbits
+ 130              		.align	1
+ 131              		.global	vApplicationGetIdleTaskMemory
+ 132              		.syntax unified
+ 133              		.thumb
+ 134              		.thumb_func
+ 136              	vApplicationGetIdleTaskMemory:
+ 137              	.LVL9:
+ 138              	.LFB135:
+  51:Core/Src/freertos.c **** 	*ppxIdleTaskTCBBuffer = &xIdleTaskTCBBuffer;
+ 139              		.loc 1 51 1 view -0
+ 140              		.cfi_startproc
+ 141              		@ args = 0, pretend = 0, frame = 0
+ 142              		@ frame_needed = 0, uses_anonymous_args = 0
+ 143              		@ link register save eliminated.
+  52:Core/Src/freertos.c **** 	*ppxIdleTaskStackBuffer = &xIdleStack[0];
+ 144              		.loc 1 52 2 view .LVU16
+  52:Core/Src/freertos.c **** 	*ppxIdleTaskStackBuffer = &xIdleStack[0];
+ 145              		.loc 1 52 24 is_stmt 0 view .LVU17
+ 146 0000 034B     		ldr	r3, .L11
+ARM GAS  /tmp/ccibS3hW.s 			page 6
+
+
+ 147 0002 0360     		str	r3, [r0]
+  53:Core/Src/freertos.c **** 	*pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+ 148              		.loc 1 53 2 is_stmt 1 view .LVU18
+  53:Core/Src/freertos.c **** 	*pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+ 149              		.loc 1 53 26 is_stmt 0 view .LVU19
+ 150 0004 034B     		ldr	r3, .L11+4
+ 151 0006 0B60     		str	r3, [r1]
+  54:Core/Src/freertos.c **** 	/* place for user code */
+ 152              		.loc 1 54 2 is_stmt 1 view .LVU20
+  54:Core/Src/freertos.c **** 	/* place for user code */
+ 153              		.loc 1 54 24 is_stmt 0 view .LVU21
+ 154 0008 8023     		movs	r3, #128
+ 155 000a 1360     		str	r3, [r2]
+  56:Core/Src/freertos.c **** /* USER CODE END GET_IDLE_TASK_MEMORY */
+ 156              		.loc 1 56 1 view .LVU22
+ 157 000c 7047     		bx	lr
+ 158              	.L12:
+ 159 000e 00BF     		.align	2
+ 160              	.L11:
+ 161 0010 00000000 		.word	.LANCHOR0
+ 162 0014 00000000 		.word	.LANCHOR1
+ 163              		.cfi_endproc
+ 164              	.LFE135:
+ 166              		.section	.text.MX_FREERTOS_Init,"ax",%progbits
+ 167              		.align	1
+ 168              		.global	MX_FREERTOS_Init
+ 169              		.syntax unified
+ 170              		.thumb
+ 171              		.thumb_func
+ 173              	MX_FREERTOS_Init:
+ 174              	.LFB136:
+  65:Core/Src/freertos.c **** 	/* Create the thread(s) */
+ 175              		.loc 1 65 1 is_stmt 1 view -0
+ 176              		.cfi_startproc
+ 177              		@ args = 0, pretend = 0, frame = 88
+ 178              		@ frame_needed = 0, uses_anonymous_args = 0
+ 179 0000 10B5     		push	{r4, lr}
+ 180              	.LCFI3:
+ 181              		.cfi_def_cfa_offset 8
+ 182              		.cfi_offset 4, -8
+ 183              		.cfi_offset 14, -4
+ 184 0002 96B0     		sub	sp, sp, #88
+ 185              	.LCFI4:
+ 186              		.cfi_def_cfa_offset 96
+  68:Core/Src/freertos.c **** 	LedOnTaskHandle = osThreadCreate(osThread(LedOnTask), NULL);
+ 187              		.loc 1 68 2 view .LVU24
+ 188 0004 1E4C     		ldr	r4, .L15
+ 189 0006 0DF13C0C 		add	ip, sp, #60
+ 190 000a A646     		mov	lr, r4
+ 191 000c BEE80F00 		ldmia	lr!, {r0, r1, r2, r3}
+ 192 0010 ACE80F00 		stmia	ip!, {r0, r1, r2, r3}
+ 193 0014 9EE80700 		ldm	lr, {r0, r1, r2}
+ 194 0018 8CE80700 		stm	ip, {r0, r1, r2}
+  69:Core/Src/freertos.c **** 
+ 195              		.loc 1 69 2 view .LVU25
+  69:Core/Src/freertos.c **** 
+ 196              		.loc 1 69 20 is_stmt 0 view .LVU26
+ARM GAS  /tmp/ccibS3hW.s 			page 7
+
+
+ 197 001c 0021     		movs	r1, #0
+ 198 001e 0FA8     		add	r0, sp, #60
+ 199 0020 FFF7FEFF 		bl	osThreadCreate
+ 200              	.LVL10:
+  69:Core/Src/freertos.c **** 
+ 201              		.loc 1 69 18 view .LVU27
+ 202 0024 174B     		ldr	r3, .L15+4
+ 203 0026 1860     		str	r0, [r3]
+  72:Core/Src/freertos.c **** 	LedOffTaskHandle = osThreadCreate(osThread(LedOffTask), NULL);
+ 204              		.loc 1 72 2 is_stmt 1 view .LVU28
+ 205 0028 0DF1200C 		add	ip, sp, #32
+ 206 002c 04F11C0E 		add	lr, r4, #28
+ 207 0030 BEE80F00 		ldmia	lr!, {r0, r1, r2, r3}
+ 208 0034 ACE80F00 		stmia	ip!, {r0, r1, r2, r3}
+ 209 0038 9EE80700 		ldm	lr, {r0, r1, r2}
+ 210 003c 8CE80700 		stm	ip, {r0, r1, r2}
+  73:Core/Src/freertos.c **** 
+ 211              		.loc 1 73 2 view .LVU29
+  73:Core/Src/freertos.c **** 
+ 212              		.loc 1 73 21 is_stmt 0 view .LVU30
+ 213 0040 0021     		movs	r1, #0
+ 214 0042 08A8     		add	r0, sp, #32
+ 215 0044 FFF7FEFF 		bl	osThreadCreate
+ 216              	.LVL11:
+  73:Core/Src/freertos.c **** 
+ 217              		.loc 1 73 19 view .LVU31
+ 218 0048 0F4B     		ldr	r3, .L15+8
+ 219 004a 1860     		str	r0, [r3]
+  76:Core/Src/freertos.c **** 	LedBlinkTaskHandle = osThreadCreate(osThread(LedBlinkTask), NULL);
+ 220              		.loc 1 76 2 is_stmt 1 view .LVU32
+ 221 004c 0DF1040E 		add	lr, sp, #4
+ 222 0050 04F1380C 		add	ip, r4, #56
+ 223 0054 BCE80F00 		ldmia	ip!, {r0, r1, r2, r3}
+ 224 0058 AEE80F00 		stmia	lr!, {r0, r1, r2, r3}
+ 225 005c 9CE80700 		ldm	ip, {r0, r1, r2}
+ 226 0060 8EE80700 		stm	lr, {r0, r1, r2}
+  77:Core/Src/freertos.c **** 
+ 227              		.loc 1 77 2 view .LVU33
+  77:Core/Src/freertos.c **** 
+ 228              		.loc 1 77 23 is_stmt 0 view .LVU34
+ 229 0064 0021     		movs	r1, #0
+ 230 0066 01A8     		add	r0, sp, #4
+ 231 0068 FFF7FEFF 		bl	osThreadCreate
+ 232              	.LVL12:
+  77:Core/Src/freertos.c **** 
+ 233              		.loc 1 77 21 view .LVU35
+ 234 006c 074B     		ldr	r3, .L15+12
+ 235 006e 1860     		str	r0, [r3]
+  80:Core/Src/freertos.c **** 
+ 236              		.loc 1 80 2 is_stmt 1 view .LVU36
+ 237 0070 0122     		movs	r2, #1
+ 238 0072 0749     		ldr	r1, .L15+16
+ 239 0074 0748     		ldr	r0, .L15+20
+ 240 0076 FFF7FEFF 		bl	HAL_UART_Receive_IT
+ 241              	.LVL13:
+  84:Core/Src/freertos.c **** 
+ 242              		.loc 1 84 1 is_stmt 0 view .LVU37
+ARM GAS  /tmp/ccibS3hW.s 			page 8
+
+
+ 243 007a 16B0     		add	sp, sp, #88
+ 244              	.LCFI5:
+ 245              		.cfi_def_cfa_offset 8
+ 246              		@ sp needed
+ 247 007c 10BD     		pop	{r4, pc}
+ 248              	.L16:
+ 249 007e 00BF     		.align	2
+ 250              	.L15:
+ 251 0080 00000000 		.word	.LANCHOR2
+ 252 0084 00000000 		.word	.LANCHOR3
+ 253 0088 00000000 		.word	.LANCHOR4
+ 254 008c 00000000 		.word	.LANCHOR5
+ 255 0090 00000000 		.word	.LANCHOR6
+ 256 0094 00000000 		.word	huart1
+ 257              		.cfi_endproc
+ 258              	.LFE136:
+ 260              		.section	.rodata.HAL_UART_RxCpltCallback.str1.4,"aMS",%progbits,1
+ 261              		.align	2
+ 262              	.LC9:
+ 263 0000 4C45445F 		.ascii	"LED_ON\000"
+ 263      4F4E00
+ 264              		.section	.text.HAL_UART_RxCpltCallback,"ax",%progbits
+ 265              		.align	1
+ 266              		.global	HAL_UART_RxCpltCallback
+ 267              		.syntax unified
+ 268              		.thumb
+ 269              		.thumb_func
+ 271              	HAL_UART_RxCpltCallback:
+ 272              	.LVL14:
+ 273              	.LFB140:
+ 134:Core/Src/freertos.c **** 	}
+ 135:Core/Src/freertos.c **** 	/* USER CODE END ledBlinkTask_init */
+ 136:Core/Src/freertos.c **** }
+ 137:Core/Src/freertos.c **** 
+ 138:Core/Src/freertos.c **** 
+ 139:Core/Src/freertos.c **** /**
+ 140:Core/Src/freertos.c ****  * @brief Uart recieve call back function
+ 141:Core/Src/freertos.c ****  * @param argument: Not used
+ 142:Core/Src/freertos.c ****  * @retval None
+ 143:Core/Src/freertos.c ****  */
+ 144:Core/Src/freertos.c **** void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+ 145:Core/Src/freertos.c **** {
+ 274              		.loc 1 145 1 is_stmt 1 view -0
+ 275              		.cfi_startproc
+ 276              		@ args = 0, pretend = 0, frame = 0
+ 277              		@ frame_needed = 0, uses_anonymous_args = 0
+ 278              		.loc 1 145 1 is_stmt 0 view .LVU39
+ 279 0000 08B5     		push	{r3, lr}
+ 280              	.LCFI6:
+ 281              		.cfi_def_cfa_offset 8
+ 282              		.cfi_offset 3, -8
+ 283              		.cfi_offset 14, -4
+ 146:Core/Src/freertos.c **** 	volatile static uint8_t index = 0;
+ 284              		.loc 1 146 2 is_stmt 1 view .LVU40
+ 147:Core/Src/freertos.c **** 	rxMessege[index] = singleByte; 
+ 285              		.loc 1 147 2 view .LVU41
+ 286              		.loc 1 147 11 is_stmt 0 view .LVU42
+ARM GAS  /tmp/ccibS3hW.s 			page 9
+
+
+ 287 0002 084A     		ldr	r2, .L19
+ 288 0004 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+ 289 0006 DBB2     		uxtb	r3, r3
+ 290              		.loc 1 147 19 view .LVU43
+ 291 0008 0748     		ldr	r0, .L19+4
+ 292              	.LVL15:
+ 293              		.loc 1 147 19 view .LVU44
+ 294 000a 0849     		ldr	r1, .L19+8
+ 295 000c 0978     		ldrb	r1, [r1]	@ zero_extendqisi2
+ 296 000e C154     		strb	r1, [r0, r3]
+ 148:Core/Src/freertos.c **** 	index++;
+ 297              		.loc 1 148 2 is_stmt 1 view .LVU45
+ 298              		.loc 1 148 7 is_stmt 0 view .LVU46
+ 299 0010 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+ 300 0012 0133     		adds	r3, r3, #1
+ 301 0014 DBB2     		uxtb	r3, r3
+ 302 0016 1370     		strb	r3, [r2]
+ 149:Core/Src/freertos.c **** 
+ 150:Core/Src/freertos.c **** 	if (strncmp(rxMessege, "LED_ON", 6) == 0) {
+ 303              		.loc 1 150 2 is_stmt 1 view .LVU47
+ 304              		.loc 1 150 6 is_stmt 0 view .LVU48
+ 305 0018 0622     		movs	r2, #6
+ 306 001a 0549     		ldr	r1, .L19+12
+ 307 001c FFF7FEFF 		bl	strncmp
+ 308              	.LVL16:
+ 151:Core/Src/freertos.c **** 
+ 152:Core/Src/freertos.c **** 	} else if (strncmp(rxMessege, "LED_OFF", 6) == 0) {
+ 153:Core/Src/freertos.c **** 
+ 154:Core/Src/freertos.c **** 	} else if (strncmp(rxMessege, "LED_BLINK", 6) == 0) {
+ 155:Core/Src/freertos.c **** 
+ 156:Core/Src/freertos.c **** 	}
+ 309              		.loc 1 156 2 is_stmt 1 view .LVU49
+ 157:Core/Src/freertos.c **** }
+ 310              		.loc 1 157 1 is_stmt 0 view .LVU50
+ 311 0020 08BD     		pop	{r3, pc}
+ 312              	.L20:
+ 313 0022 00BF     		.align	2
+ 314              	.L19:
+ 315 0024 00000000 		.word	.LANCHOR7
+ 316 0028 00000000 		.word	.LANCHOR8
+ 317 002c 00000000 		.word	.LANCHOR6
+ 318 0030 00000000 		.word	.LC9
+ 319              		.cfi_endproc
+ 320              	.LFE140:
+ 322              		.global	singleByte
+ 323              		.global	rxMessege
+ 324              		.global	LedBlinkTaskHandle
+ 325              		.global	LedOffTaskHandle
+ 326              		.global	LedOnTaskHandle
+ 327              		.section	.rodata
+ 328              		.align	2
+ 329              		.set	.LANCHOR2,. + 0
+ 330              	.LC6:
+ 331 0000 00000000 		.word	.LC0
+ 332 0004 00000000 		.word	ledOnTask_init
+ 333 0008 0000     		.short	0
+ 334 000a 0000     		.space	2
+ARM GAS  /tmp/ccibS3hW.s 			page 10
+
+
+ 335 000c 00000000 		.word	0
+ 336 0010 80000000 		.word	128
+ 337 0014 00000000 		.word	0
+ 338 0018 00000000 		.word	0
+ 339              	.LC7:
+ 340 001c 0C000000 		.word	.LC2
+ 341 0020 00000000 		.word	ledOffTask_init
+ 342 0024 0000     		.short	0
+ 343 0026 0000     		.space	2
+ 344 0028 00000000 		.word	0
+ 345 002c 80000000 		.word	128
+ 346 0030 00000000 		.word	0
+ 347 0034 00000000 		.word	0
+ 348              	.LC8:
+ 349 0038 18000000 		.word	.LC4
+ 350 003c 00000000 		.word	ledBlinkTask_init
+ 351 0040 0000     		.short	0
+ 352 0042 0000     		.space	2
+ 353 0044 00000000 		.word	0
+ 354 0048 80000000 		.word	128
+ 355 004c 00000000 		.word	0
+ 356 0050 00000000 		.word	0
+ 357              		.section	.bss.LedBlinkTaskHandle,"aw",%nobits
+ 358              		.align	2
+ 359              		.set	.LANCHOR5,. + 0
+ 362              	LedBlinkTaskHandle:
+ 363 0000 00000000 		.space	4
+ 364              		.section	.bss.LedOffTaskHandle,"aw",%nobits
+ 365              		.align	2
+ 366              		.set	.LANCHOR4,. + 0
+ 369              	LedOffTaskHandle:
+ 370 0000 00000000 		.space	4
+ 371              		.section	.bss.LedOnTaskHandle,"aw",%nobits
+ 372              		.align	2
+ 373              		.set	.LANCHOR3,. + 0
+ 376              	LedOnTaskHandle:
+ 377 0000 00000000 		.space	4
+ 378              		.section	.bss.index.0,"aw",%nobits
+ 379              		.set	.LANCHOR7,. + 0
+ 382              	index.0:
+ 383 0000 00       		.space	1
+ 384              		.section	.bss.rxMessege,"aw",%nobits
+ 385              		.align	2
+ 386              		.set	.LANCHOR8,. + 0
+ 389              	rxMessege:
+ 390 0000 00000000 		.space	100
+ 390      00000000 
+ 390      00000000 
+ 390      00000000 
+ 390      00000000 
+ 391              		.section	.bss.singleByte,"aw",%nobits
+ 392              		.set	.LANCHOR6,. + 0
+ 395              	singleByte:
+ 396 0000 00       		.space	1
+ 397              		.section	.bss.xIdleStack,"aw",%nobits
+ 398              		.align	2
+ 399              		.set	.LANCHOR1,. + 0
+ARM GAS  /tmp/ccibS3hW.s 			page 11
+
+
+ 402              	xIdleStack:
+ 403 0000 00000000 		.space	512
+ 403      00000000 
+ 403      00000000 
+ 403      00000000 
+ 403      00000000 
+ 404              		.section	.bss.xIdleTaskTCBBuffer,"aw",%nobits
+ 405              		.align	2
+ 406              		.set	.LANCHOR0,. + 0
+ 409              	xIdleTaskTCBBuffer:
+ 410 0000 00000000 		.space	84
+ 410      00000000 
+ 410      00000000 
+ 410      00000000 
+ 410      00000000 
+ 411              		.text
+ 412              	.Letext0:
+ 413              		.file 2 "/opt/ARM-GCC/arm-none-eabi/include/machine/_default_types.h"
+ 414              		.file 3 "/opt/ARM-GCC/arm-none-eabi/include/sys/_stdint.h"
+ 415              		.file 4 "Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/portmacro.h"
+ 416              		.file 5 "Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h"
+ 417              		.file 6 "Middlewares/Third_Party/FreeRTOS/Source/include/task.h"
+ 418              		.file 7 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f407xx.h"
+ 419              		.file 8 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_def.h"
+ 420              		.file 9 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma.h"
+ 421              		.file 10 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h"
+ 422              		.file 11 "Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h"
+ 423              		.file 12 "Core/Inc/usart.h"
+ 424              		.file 13 "/opt/ARM-GCC/arm-none-eabi/include/string.h"
+ARM GAS  /tmp/ccibS3hW.s 			page 12
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 freertos.c
+     /tmp/ccibS3hW.s:17     .rodata.str1.4:0000000000000000 $d
+     /tmp/ccibS3hW.s:30     .text.ledOnTask_init:0000000000000000 $t
+     /tmp/ccibS3hW.s:36     .text.ledOnTask_init:0000000000000000 ledOnTask_init
+     /tmp/ccibS3hW.s:64     .text.ledOffTask_init:0000000000000000 $t
+     /tmp/ccibS3hW.s:70     .text.ledOffTask_init:0000000000000000 ledOffTask_init
+     /tmp/ccibS3hW.s:97     .text.ledBlinkTask_init:0000000000000000 $t
+     /tmp/ccibS3hW.s:103    .text.ledBlinkTask_init:0000000000000000 ledBlinkTask_init
+     /tmp/ccibS3hW.s:130    .text.vApplicationGetIdleTaskMemory:0000000000000000 $t
+     /tmp/ccibS3hW.s:136    .text.vApplicationGetIdleTaskMemory:0000000000000000 vApplicationGetIdleTaskMemory
+     /tmp/ccibS3hW.s:161    .text.vApplicationGetIdleTaskMemory:0000000000000010 $d
+     /tmp/ccibS3hW.s:167    .text.MX_FREERTOS_Init:0000000000000000 $t
+     /tmp/ccibS3hW.s:173    .text.MX_FREERTOS_Init:0000000000000000 MX_FREERTOS_Init
+     /tmp/ccibS3hW.s:251    .text.MX_FREERTOS_Init:0000000000000080 $d
+     /tmp/ccibS3hW.s:261    .rodata.HAL_UART_RxCpltCallback.str1.4:0000000000000000 $d
+     /tmp/ccibS3hW.s:265    .text.HAL_UART_RxCpltCallback:0000000000000000 $t
+     /tmp/ccibS3hW.s:271    .text.HAL_UART_RxCpltCallback:0000000000000000 HAL_UART_RxCpltCallback
+     /tmp/ccibS3hW.s:315    .text.HAL_UART_RxCpltCallback:0000000000000024 $d
+     /tmp/ccibS3hW.s:395    .bss.singleByte:0000000000000000 singleByte
+     /tmp/ccibS3hW.s:389    .bss.rxMessege:0000000000000000 rxMessege
+     /tmp/ccibS3hW.s:362    .bss.LedBlinkTaskHandle:0000000000000000 LedBlinkTaskHandle
+     /tmp/ccibS3hW.s:369    .bss.LedOffTaskHandle:0000000000000000 LedOffTaskHandle
+     /tmp/ccibS3hW.s:376    .bss.LedOnTaskHandle:0000000000000000 LedOnTaskHandle
+     /tmp/ccibS3hW.s:328    .rodata:0000000000000000 $d
+     /tmp/ccibS3hW.s:358    .bss.LedBlinkTaskHandle:0000000000000000 $d
+     /tmp/ccibS3hW.s:365    .bss.LedOffTaskHandle:0000000000000000 $d
+     /tmp/ccibS3hW.s:372    .bss.LedOnTaskHandle:0000000000000000 $d
+     /tmp/ccibS3hW.s:382    .bss.index.0:0000000000000000 index.0
+     /tmp/ccibS3hW.s:383    .bss.index.0:0000000000000000 $d
+     /tmp/ccibS3hW.s:385    .bss.rxMessege:0000000000000000 $d
+     /tmp/ccibS3hW.s:396    .bss.singleByte:0000000000000000 $d
+     /tmp/ccibS3hW.s:398    .bss.xIdleStack:0000000000000000 $d
+     /tmp/ccibS3hW.s:402    .bss.xIdleStack:0000000000000000 xIdleStack
+     /tmp/ccibS3hW.s:405    .bss.xIdleTaskTCBBuffer:0000000000000000 $d
+     /tmp/ccibS3hW.s:409    .bss.xIdleTaskTCBBuffer:0000000000000000 xIdleTaskTCBBuffer
+
+UNDEFINED SYMBOLS
+osDelay
+osThreadCreate
+HAL_UART_Receive_IT
+huart1
+strncmp
