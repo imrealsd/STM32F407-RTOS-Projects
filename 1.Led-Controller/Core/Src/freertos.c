@@ -25,6 +25,9 @@
 #include "usart.h"
 #include "string.h"
 
+#define USER_TASK_SUSPEND 1234
+#define USER_TASK_RUN     4321
+
 /*---------------------------------------------*/
 osThreadId LedOnTaskHandle;
 osThreadId LedOffTaskHandle;
@@ -69,21 +72,26 @@ void MX_FREERTOS_Init(void)
 
 	/* Create the thread(s) */
 	/* definition and creation of LedOnTask */
-	osThreadDef(LedOnTask, ledOnTask_init, osPriorityAboveNormal, 0, 128);
+	osThreadDef(LedOnTask, ledOnTask_init, osPriorityNormal, 0, 128);
 	LedOnTaskHandle = osThreadCreate(osThread(LedOnTask), NULL);
 
 	/* definition and creation of LedOffTask */
-	osThreadDef(LedOffTask, ledOffTask_init, osPriorityHigh, 0, 128);
+	osThreadDef(LedOffTask, ledOffTask_init, osPriorityNormal, 0, 128);
 	LedOffTaskHandle = osThreadCreate(osThread(LedOffTask), NULL);
 
-	/* definition and creation of LedBlinkTask */
-	osThreadDef(LedBlinkTask, ledBlinkTask_init, osPriorityNormal, 0, 128);
+	/**
+	 * definition and creation of LedBlinkTask
+	 * blink task has highest priority because at the end of ISR 
+	 * blink task will suspend first (if running) then led on/off task will run
+	 * otherwise led/on off task will run first then blink task will change led state.
+	 */
+	osThreadDef(LedBlinkTask, ledBlinkTask_init , osPriorityAboveNormal, 0, 128);
 	LedBlinkTaskHandle = osThreadCreate(osThread(LedBlinkTask), NULL);
 
 	/*configure interrupt to recieve six bytes via uart*/
 	HAL_UART_Receive_IT(&huart1, (uint8_t *)&rxMessage, 6);
 
-	/*Suspend all task before the start of the kernel*/
+	/*suspend all 3 task before the start of the scheduler*/
 	osThreadSuspend(LedOnTaskHandle);
 	osThreadSuspend(LedOffTaskHandle);
 	osThreadSuspend(LedBlinkTaskHandle);
@@ -99,9 +107,12 @@ void MX_FREERTOS_Init(void)
 /* USER CODE END Header_ledOnTask_init */
 void ledOnTask_init(void const *argument)
 {	
+	/*Get the signal from ISR change the led state and suspend itself*/
 	for (;;) {	
+		/*wait for the task run signal*/
+		osSignalWait(USER_TASK_RUN, osWaitForever);
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
-		osDelay(1000);
+		osThreadSuspend(NULL);
 	}
 }
 
@@ -113,9 +124,12 @@ void ledOnTask_init(void const *argument)
  */
 void ledOffTask_init(void const *argument)
 {	
+	/*Get the signal from ISR change the led state and suspend itself*/
 	for (;;) {	
+		/*wait for the task run signal*/
+		osSignalWait(USER_TASK_RUN, osWaitForever);
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
-		osDelay(1000);
+		osThreadSuspend(NULL);
 	}
 }
 
@@ -127,18 +141,29 @@ void ledOffTask_init(void const *argument)
  */
 void ledBlinkTask_init(void const *argument)
 {	
-	osEvent myEvent;
+	osEvent myMessegeEvent;
+	osEvent mySignalEvent;
 	volatile uint16_t duration;
 
+	/*Get the signal from ISR change the led state and run until suspend signal is recieved from ISR*/
 	for (;;) {
-		for (volatile uint8_t i = 0; i < 1; i++) {	
-			myEvent = osMessageGet(MyQueueHandle,10);
-			duration = myEvent.value.v;
+		/*check for the messege to get blink duration value*/
+		myMessegeEvent = osMessageGet(MyQueueHandle,10);
+		if (myMessegeEvent.status == osEventMessage) {
+			duration = myMessegeEvent.value.v;
 		}
+		
+		/*blink led*/
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
-		osDelay(duration);
+		HAL_Delay(duration);
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
-		osDelay(duration);
+		HAL_Delay(duration);
+
+		/*check for the suspend signal to suspend itself*/
+		mySignalEvent = osSignalWait(USER_TASK_SUSPEND, 10);
+		if (mySignalEvent.status == osEventSignal) {
+			osThreadSuspend(NULL);
+		}
 	}
 }
 
@@ -156,30 +181,35 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	/*configure interrupt to recieve six bytes via uart*/
 	HAL_UART_Receive_IT(&huart1, (uint8_t *)&rxMessage, 6);
 
-	/*suspend all 3 task and setup interrupt for receiving another byte through byte*/
-	switch (runningTaskId) {
-	case 1:
-		if (osThreadSuspend(LedOnTaskHandle) != osOK) {
-			HAL_UART_Transmit(&huart1, (uint8_t *)"ERROR\n", 6, 100);
-		}
-		break;
-	case 2:
-		osThreadSuspend(LedOffTaskHandle);
-		break;
-	case 3:
-		osThreadSuspend(LedBlinkTaskHandle);
-		break;
-	}
-
-	/*run 1 task and suspend other 2 according to the received data*/
+	/**
+	 * If Blink task running & led on/off request is recieved form bluetooth/uart:
+	 * send signal to ruuning task (ask it to suspend itself)
+	 * cannot suspend task from ISR , "API's ending with 'FromISR' can only be used inside ISR"
+	 * osThreadSuspend() calls xTaskSuspend() native API
+	 * osThreadResume() calls xTaskResumeFromISR() native API
+	 */
 	if (strncmp(rxMessage, "110000", 6) == 0) {
 		osThreadResume(LedOnTaskHandle);
+		osSignalSet(LedOnTaskHandle, USER_TASK_RUN);
+
+		if (runningTaskId == 3) {
+			osSignalSet(LedBlinkTaskHandle, USER_TASK_SUSPEND);
+		}
 		runningTaskId = 1;
 		
 	} else if (strncmp(rxMessage, "000000", 6) == 0) {
 		osThreadResume(LedOffTaskHandle);
+		osSignalSet(LedOffTaskHandle, USER_TASK_RUN);
+
+		if (runningTaskId == 3) {
+			osSignalSet(LedBlinkTaskHandle, USER_TASK_SUSPEND);
+		}
 		runningTaskId = 2;
-		
+	
+	/**
+	 * If Blink task is running & Blink request is received through bluetooh/uart
+	 * just send the updated "duration" to blink task , no need to suspend/resume
+	 */
 	} else if (strncmp(rxMessage, "22", 2) == 0) {		
 		/*convert blink duration from string to int*/
 		duration  = (rxMessage[2] - 48) * 1000;
@@ -188,7 +218,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		duration += (rxMessage[5] - 48) * 1;
 		/*pass the duration value to LedBlinkTask through message queue*/
 		osMessagePut(MyQueueHandle, duration, osWaitForever);
-		osThreadResume(LedBlinkTaskHandle);
-		runningTaskId = 3;
+
+		/*Resume blink task only when it was suspended previously to run other task*/
+		if (runningTaskId != 3) {
+			osThreadResume(LedBlinkTaskHandle);
+			runningTaskId = 3;
+		}
 	}
 }
