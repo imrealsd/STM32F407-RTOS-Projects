@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceRoot}",
+                "${workspaceRoot}/Core/Inc",
+                "${workspaceRoot}/Drivers/STM32F4xx_HAL_Driver/Inc",
+                "${workspaceRoot}/Drivers/CMSIS/Include",
+                "${workspaceRoot}/Drivers/CMSIS/Device/ST/STM32F4xx/Include",
+                "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS",
+                "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/include",
+                "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F",
+                "/opt/ARM-GCC/arm-none-eabi/include",
+                "/opt/ARM-GCC/arm-none-eabi/include/c++/10.3.1",
+                "/opt/ARM-GCC/arm-none-eabi/include/machine",
+                "/opt/ARM-GCC/arm-none-eabi/include/newlib-nano",
+                "/opt/ARM-GCC/arm-none-eabi/include/sys"
+            ],
+            "defines": [
+                "USE_HAL_DRIVER",
+                "STM32F407xx"
+            ],
+            "intelliSenseMode": "linux-gcc-x64",
+            "cStandard": "c11",
+            "cppStandard": "c++20",
+            "browse": {
+                "path": [
+                    "${workspaceRoot}",
+                    "${workspaceRoot}/Core/Inc",
+                    "${workspaceRoot}/Drivers/STM32F4xx_HAL_Driver/Inc",
+                    "${workspaceRoot}/Drivers/CMSIS/Include",
+                    "${workspaceRoot}/Drivers/CMSIS/Device/ST/STM32F4xx/Include",
+                    "/opt/ARM-GCC/arm-none-eabi/include",
+                    "/opt/ARM-GCC/arm-none-eabi/include/c++/10.3.1"
+                ],
+                "limitSymbolsToIncludedHeaders": true,
+                "databaseFilename": "${workspaceRoot}/.vscode/browse.vc.db"
+            },
+            "configurationProvider": "ms-vscode.makefile-tools"
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,4 @@
+{
+    "cortex-debug.gdbPath": "/opt/ARM-GCC/bin/arm-none-eabi-gdb",
+    "cortex-debug.stutilPath": "/opt/Stlink-Utility/bin/st-util",
+}
