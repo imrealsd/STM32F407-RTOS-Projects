@@ -7,7 +7,7 @@
         {
             "name": "Cortex Debug",
             "cwd": "${workspaceFolder}",
-            "executable": "./build/1.Led-Controller.elf",
+            "executable": "./build/2.Random-Number-Generator.elf",
             "request": "launch",
             "interface": "swd",
             "type": "cortex-debug",
